@@ -96,6 +96,8 @@ third_party/*
 !third_party/lensfun/**
 !third_party/nlohmann/
 !third_party/nlohmann/**
+!third_party/nikon-he/
+!third_party/nikon-he/**
 !cmake/lens-dependencies.cmake
 !third_party/dng-sdk/
 !third_party/dng-sdk/*.txt
