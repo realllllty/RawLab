@@ -1,0 +1,194 @@
+name: macOS release packages
+
+# Builds the ad-hoc signed macOS 15 packages (arm64 and x86_64) and the
+# matching patched LibRaw source archive from hotfix/release branches and
+# version tags. Packages are workflow artifacts; publishing a GitHub Release
+# from them is a separate, deliberate step.
+
+on:
+  push:
+    branches: ['hotfix/**', 'release/**']
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    name: macOS ${{ matrix.arch }} package
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    env:
+      # Homebrew GLib on a macOS 15 runner keeps every bundled dylib at minos 15.
+      MACOSX_DEPLOYMENT_TARGET: '15.0'
+      RAWLAB_ARCH: ${{ matrix.arch }}
+      JOBS: '4'
+      BUILD_DIR: lutools/build-release-${{ matrix.arch }}
+      APP: build/release-${{ matrix.arch }}/RawLab Mac.app
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          sw_vers
+          xcodebuild -version
+          echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "$GITHUB_ENV"
+          brew install pkg-config glib
+          cmake --version
+      - name: Build dependencies, core and app
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/ci
+          exec > >(tee "build/ci/build-$RAWLAB_ARCH.log") 2>&1
+          git rev-parse HEAD
+          RAWLAB_BUILD_DIR="$PWD/$BUILD_DIR" RAWLAB_APP_PATH="$PWD/$APP" bash RawLabMac/build.sh
+      - name: Core regression suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          ctest --test-dir "$BUILD_DIR" --output-on-failure --no-tests=error \
+            -E '^(native_dcp_metal|gpu_photo|metal_denoise)$' \
+            --output-junit "$PWD/build/ci/ctest-$RAWLAB_ARCH.xml"
+      - name: Nikon HE/HE* samples through LibRaw, core and app
+        shell: bash
+        run: |
+          set -euo pipefail
+          samples="$RUNNER_TEMP/nikon-he"
+          python3 - "$samples" <<'PY'
+          import hashlib, json, pathlib, sys, urllib.parse, urllib.request
+          target = pathlib.Path(sys.argv[1])
+          target.mkdir(parents=True, exist_ok=True)
+          manifest = json.loads(pathlib.Path('lutools/tests/nikon-he-raw-samples.json').read_text())
+          for sample in manifest['samples']:
+              path = target / pathlib.Path(urllib.parse.urlparse(sample['url']).path).name
+              urllib.request.urlretrieve(sample['url'], path)
+              if hashlib.sha256(path.read_bytes()).hexdigest() != sample['sha256']:
+                  raise SystemExit('checksum mismatch: ' + path.name)
+          PY
+          python3 lutools/tests/run_nikon_he_samples.py --samples "$samples" \
+            --tool "$BUILD_DIR/nikon_he_tests"
+          python3 lutools/tests/run_raw_compatibility.py \
+            --manifest lutools/tests/nikon-he-raw-samples.json --samples "$samples" \
+            --build "$BUILD_DIR" --app "$APP/Contents/MacOS/RawLabMac" \
+            --output "$RUNNER_TEMP/compat-$RAWLAB_ARCH"
+          cp "$RUNNER_TEMP/compat-$RAWLAB_ARCH/results.json" "build/ci/nikon-he-compat-$RAWLAB_ARCH.json"
+      - name: Package
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
+          build="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Contents/Info.plist")"
+          zip="RawLab-Mac-$version-macOS15-$RAWLAB_ARCH.zip"
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "dist/$zip"
+          unzip -tq "dist/$zip"
+          binaries=$(find "$APP/Contents/MacOS" "$APP/Contents/Frameworks" -type f -perm -u+x | wc -l | tr -d ' ')
+          python3 - "$zip" "$version" "$build" "$binaries" <<'PY'
+          import hashlib, json, os, pathlib, platform, subprocess, sys
+          name, version, build, binaries = sys.argv[1:]
+          data = pathlib.Path('dist', name).read_bytes()
+          record = {
+              'platform': 'macos', 'arch': os.environ['RAWLAB_ARCH'], 'file': name,
+              'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest(),
+              'version': version, 'build': int(build),
+              'minimum_macos': os.environ['MACOSX_DEPLOYMENT_TARGET'],
+              'source_commit': os.environ['GITHUB_SHA'], 'ref': os.environ['GITHUB_REF'],
+              'run': f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+              'runner': f"{os.environ['RUNNER_OS']} {platform.mac_ver()[0]} {platform.machine()}",
+              'xcode': subprocess.run(['xcodebuild', '-version'], capture_output=True, text=True).stdout.split('\n')[0],
+              'signing': 'ad-hoc; not Developer ID signed or notarized',
+              'checks': {
+                  'bundle': 'PASS: RawLabMac/tests/bundle.sh (architecture, minimum OS, closure, signatures)',
+                  'core': 'PASS: ctest excluding Metal-only suites',
+                  'nikon_he': 'PASS: run_nikon_he_samples.py and run_raw_compatibility.py on 9 raw.pixls.us files',
+                  'executables': int(binaries),
+              },
+          }
+          pathlib.Path('dist', f"provenance-{os.environ['RAWLAB_ARCH']}.json").write_text(json.dumps(record, indent=2) + '\n')
+          print(json.dumps(record, indent=2))
+          PY
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: RawLab-Mac-${{ matrix.arch }}
+          path: dist/*
+          retention-days: 30
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        if: always()
+        with:
+          name: macos-${{ matrix.arch }}-logs
+          path: |
+            build/ci/*.log
+            build/ci/*.xml
+            build/ci/*.json
+          retention-days: 14
+
+  libraw-source:
+    name: Patched LibRaw source archive
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Assemble archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage="$RUNNER_TEMP/libraw-source"
+          mkdir -p "$stage" dist
+          curl -fL --retry 2 -o "$RUNNER_TEMP/LibRaw-0.22.2.tar.gz" https://www.libraw.org/data/LibRaw-0.22.2.tar.gz
+          echo "de86b035655accff8d4010f1a221fdf50d353cb7b1422ba26f14a0db92612cfa  $RUNNER_TEMP/LibRaw-0.22.2.tar.gz" | sha256sum -c -
+          curl -fL --retry 2 -o "$RUNNER_TEMP/LibRaw-cmake.tar.gz" \
+            https://github.com/LibRaw/LibRaw-cmake/archive/eb98e4325aef2ce85d2eb031c2ff18640ca616d3.tar.gz
+          echo "3cd218bf6d1254de86e27269541277fbfc5bae57a9002ce0b46fbe2a97088b43  $RUNNER_TEMP/LibRaw-cmake.tar.gz" | sha256sum -c -
+          tar -xf "$RUNNER_TEMP/LibRaw-0.22.2.tar.gz" -C "$stage"
+          tar -xf "$RUNNER_TEMP/LibRaw-cmake.tar.gz" -C "$stage"
+          cmake -DLIBRAW_SOURCE_DIR="$stage/LibRaw-0.22.2" -P lutools/cmake/patch-libraw.cmake
+          # Applying the patch again must be a no-op.
+          cmake -DLIBRAW_SOURCE_DIR="$stage/LibRaw-0.22.2" -P lutools/cmake/patch-libraw.cmake
+          for file in LICENSE RawLabAndroid/app/src/main/cpp/CMakeLists.txt \
+              RawLabMac/build-chroma-dependency.sh RawLabMac/build-dependencies.sh \
+              RawLabMac/build-lens-dependency.sh RawLabMac/build-tiff-dependency.sh \
+              RawLabMac/build-wavelet-dependency.sh RawLabWindows/native/CMakeLists.txt \
+              docs/licensing.md lutools/cmake/build-lens-dependencies.py \
+              lutools/cmake/denoise-dependencies.cmake lutools/cmake/dng-sdk/CMakeLists.txt \
+              lutools/cmake/dng-sdk/rawlab-dng-sdk.pc.in lutools/cmake/dng-sdk.cmake \
+              lutools/cmake/lens-dependencies.cmake lutools/cmake/lens-dependencies.json \
+              lutools/cmake/libraw/CMakeLists.txt lutools/cmake/patch-libraw.cmake \
+              lutools/cmake/tiff-dependencies.cmake lutools/cmake/wavelib/CMakeLists.txt \
+              lutools/cmake/wavelib/wavelib.pc.in lutools/cmake/wavelib-iswt2.c.inc \
+              lutools/cmake/wavelib-swt-columns.c.inc lutools/platform/ios/build-framework.sh \
+              lutools/third_party/rawspeed-camera-calibration.inc \
+              lutools/third_party/nikon-he/nikon_he_decoder.h lutools/third_party/nikon-he/README.md; do
+            mkdir -p "$stage/rawlab-build/$(dirname "$file")"
+            cp "$file" "$stage/rawlab-build/$file"
+          done
+          tar --sort=name --owner=0 --group=0 --numeric-owner --mtime='2026-10-16 00:00Z' \
+            -czf dist/LibRaw-0.22.2-patched-source.tar.gz -C "$stage" .
+          sha256sum dist/LibRaw-0.22.2-patched-source.tar.gz
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: LibRaw-patched-source
+          path: dist/LibRaw-0.22.2-patched-source.tar.gz
+          retention-days: 30

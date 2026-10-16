@@ -12,7 +12,7 @@ if ! pkg-config --exists glib-2.0; then
     exit 1
 fi
 GLIB_LIB="$(pkg-config --variable=libdir glib-2.0)/libglib-2.0.dylib"
-if ! lipo -verify_arch "$ARCH" "$GLIB_LIB" >/dev/null 2>&1; then
+if ! lipo "$GLIB_LIB" -verify_arch "$ARCH" >/dev/null 2>&1; then
     echo "GLib must support $ARCH. Set PKG_CONFIG_PATH to a target-architecture GLib build." >&2
     exit 1
 fi
