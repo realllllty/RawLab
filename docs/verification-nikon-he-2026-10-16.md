@@ -14,9 +14,10 @@ JPEG XS（ISO/IEC 21122）码流，只有逐 precinct 的量化参数不同。Li
 - 新增仅头文件的解码器 [nikon_he_decoder.h](../lutools/third_party/nikon-he/nikon_he_decoder.h)
   （LGPL-2.1-only，C++11）：码流、packet 与熵解码移植自
   [dnglab PR #835](https://github.com/dnglab/dnglab/pull/835)；逆变换采用 ISO/IEC 21122-1
-  附录 F 的 star-tetrix（Cf=0、e1=e2=0），分量位置和底边处理与
-  [LibRaw PR #826](https://github.com/LibRaw/LibRaw/pull/826) 中经 Adobe 校验的实现一致；
-  传输曲线按该 PR 中公布的规则读取 PIH 扩展参数。未使用 Nikon SDK。
+  附录 F 的 star-tetrix（Cf=0、e1=e2=0），分量位置与
+  [LibRaw PR #826](https://github.com/LibRaw/LibRaw/pull/826) 的实现一致，底边处理采用
+  RdWing 在该 PR 中公布并经 Adobe 校验的修正；传输曲线按同一处公布的规则读取 PIH 扩展参数。
+  未使用 Nikon SDK。
 - 解码逐 precinct 流式进行，只保留几行分量缓冲，不新增整帧缓冲；45MP 帧单线程约 1 秒
   （Linux arm64 实测）。
 - [patch-libraw.cmake](../lutools/cmake/patch-libraw.cmake) 把头文件复制进 LibRaw，
@@ -52,10 +53,14 @@ Z8、Z9 各 HE/HE*/无损三张同场景同参数连拍，Zf 的 HE、HE* 和无
 | 平台 | 本轮实际验证 | 结果与边界 |
 | --- | --- | --- |
 | Linux arm64（本地） | 打补丁 LibRaw、lutools 核心与测试；CTest；9 个样片的解包、`raw_smoke`、白平衡 | CTest 12/12 通过（含 `nikon_he`、`nikon_he_raw`）；不是发布平台 |
-| macOS arm64 / x86_64（GitHub 托管 macOS 15 runner） | 源码依赖、核心与应用构建；`bundle.sh`；CTest（不含仅 Metal 套件）；9 个样片经 LibRaw、核心和应用 `--smoke` 导出 | 见下方 CI 记录 |
-| Windows、Android、iOS | 共用同一 LibRaw 补丁，但本轮未构建、未测试 | 未验证 |
+| macOS arm64 / x86_64（GitHub 托管 macOS 15.7.9 runner，Xcode 16.4） | 源码依赖、核心与应用构建；`bundle.sh`；CTest（不含仅 Metal 套件）；9 个样片经 LibRaw、核心 `raw_smoke`、白平衡和应用 `--smoke` 导出 | 两个架构均通过：打包检查通过，CTest 18/18，9 个样片的 LibRaw 指纹与 Linux 相同，`raw_smoke`、白平衡和应用导出 27/27 通过 |
+| Windows、Android、iOS | 本发布未构建这些客户端。同样的解码器改动在上游 `development` 基线上的托管 CI（fork 内草稿 [PR #1](https://github.com/realllllty/RawLab/pull/1)，[run 38904900307](https://github.com/realllllty/RawLab/actions/runs/38904900307)）：Windows MSVC 构建与现有套件、Android 双 ABI 构建与 JVM 测试、iOS 三架构 framework 与模拟器应用编译 | 三者及 macOS arm64 均通过，只证明能编译并通过现有套件，未在这些平台运行 HE 文件；macOS x86_64 首次运行在构建应用前因 runner 无法解析 github.com 失败（含解码器的 LibRaw 已编译安装），已重跑 |
 
-CI 记录：待 macOS 构建完成后补充。
+macOS 记录：[run 38906885311](https://github.com/realllllty/RawLab/actions/runs/38906885311)
+（提交 `2336935`）。该 workflow 的第一次运行把 LibRaw 原始尺寸当作 `raw_smoke` 的输出尺寸，
+导致包括无损文件在内的 `raw_smoke` 全部报告 active area 不符，而 LibRaw 指纹、白平衡和
+应用导出均已通过；清单改为裁切后的 8256×5504 / 6048×4032 后全部通过，未放宽任何检查。
+发布包由 `v0.7.1` 标签上的同一 workflow 重新构建。
 
 ## 限制
 
