@@ -51,7 +51,7 @@ def main():
         result = subprocess.run([str(args.tool), "--decode", str(path)],
                                 capture_output=True, text=True, timeout=300)
         facts = dict(field.split("=", 1) for field in result.stdout.split())
-        width, height = entry["expected_dimensions"]
+        width, height = entry["raw_dimensions"]
         expected = {"decoder": entry["decoder"], "width": str(width), "height": str(height),
                     "errors": "0", "fnv1a64": entry["raw_fnv1a64"]}
         wrong = {key: facts.get(key) for key, value in expected.items() if facts.get(key) != value}
