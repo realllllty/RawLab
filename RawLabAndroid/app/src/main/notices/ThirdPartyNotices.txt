@@ -42,7 +42,11 @@ Full notices: Adobe-DNG-SDK-1.7.1-LICENSE.txt, JPEG-XL-LICENSE.txt,
 Brotli-LICENSE.txt, Highway-LICENSE.txt, Highway-LICENSE-BSD3.txt and skcms-LICENSE.txt.
 
 Local crop, X-Trans concurrency and Nikon recognition changes are applied by
-lutools/cmake/patch-libraw.cmake. Four exact-model camera matrices are adapted
+lutools/cmake/patch-libraw.cmake. The same patch compiles in the Nikon HE/HE*
+decoder from lutools/third_party/nikon-he (LGPL-2.1-only), ported from dnglab
+(https://github.com/dnglab/dnglab/pull/835) with the transfer curve documented in
+https://github.com/LibRaw/LibRaw/pull/826. No Nikon SDK code is included.
+Four exact-model camera matrices are adapted
 from RawSpeed contributors' cameras.xml at:
 https://github.com/darktable-org/rawspeed/blob/c835b05aecfacb7343f7c424abd620aa12116c3f/data/cameras.xml
 The adapted data remains under CC BY-SA 3.0:

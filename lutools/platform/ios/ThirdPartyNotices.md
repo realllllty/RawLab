@@ -21,9 +21,13 @@ Base source: https://www.libraw.org/data/LibRaw-0.22.2.tar.gz
 The corresponding local modifications and build instructions are in the RawLab
 source repository: https://github.com/dancancer/RawLab
 See `lutools/cmake/patch-libraw.cmake` and `lutools/platform/ios/build-framework.sh`.
-Changes cover X2D II crop, X-Trans tile concurrency, Nikon HE recognition and
+Changes cover X2D II crop, X-Trans tile concurrency, Nikon HE/HE* decoding and
 R6 III ColorData v12. R6 III layout/matrix evidence comes from ErikCJohansson's
 contribution: https://github.com/LibRaw/LibRaw/issues/821
+The Nikon HE/HE* decoder (`lutools/third_party/nikon-he`, LGPL-2.1-only) is
+ported from dnglab (https://github.com/dnglab/dnglab/pull/835) and applies the
+transfer curve documented in https://github.com/LibRaw/LibRaw/pull/826.
+No Nikon SDK code is included.
 
 Four camera matrices are adapted from RawSpeed contributors' cameras.xml:
 https://github.com/darktable-org/rawspeed/blob/c835b05aecfacb7343f7c424abd620aa12116c3f/data/cameras.xml

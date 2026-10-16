@@ -70,7 +70,14 @@ The pinned source build applies the changes below; a custom Homebrew/system
 library build does not necessarily contain them. Local LibRaw changes are
 reproducible with `lutools/cmake/patch-libraw.cmake`:
 X2D II crop backport (upstream bcb267e), immutable X-Trans tile input, Nikon
-HE model recognition, R6 III ColorData v12 parsing, and camera calibration matrices.
+HE/HE* decoding, R6 III ColorData v12 parsing, and camera calibration matrices.
+The Nikon High Efficiency decoder is compiled into LibRaw from
+`lutools/third_party/nikon-he/nikon_he_decoder.h` (LGPL-2.1-only). It ports the
+JPEG XS codestream and entropy decoding of dnglab by Nicolai Buchwitz
+(https://github.com/dnglab/dnglab/pull/835, LGPL-2.1) and applies the
+ISO/IEC 21122-1 star-tetrix inverse and the transfer curve documented in
+https://github.com/LibRaw/LibRaw/pull/826. No Nikon SDK code is included; it is
+distributed with LibRaw under LibRaw's LGPL option.
 R6 III layout/matrix evidence is from ErikCJohansson's contribution at
 https://github.com/LibRaw/LibRaw/issues/821; the parser reuses LibRaw's existing
 v12 offsets. This is a local sample-verified correction, not upstream support.

@@ -13,6 +13,7 @@ RawLab 用于显影相机 RAW 文件、应用兼容的富士胶片模拟 LUT 和
 ## 主要功能
 
 - RAW 显影，支持曝光、相机空间白平衡、明暗、色彩和锐化调整。
+- 支持尼康高效率（HE 与 HE*）NEF，在已测试的 Z8、Z9、Zf 文件上与 Adobe DNG Converter 逐像素一致。
 - 四端新照片默认使用“匹配内嵌预览”曝光基准，提供一次性自动曝光和八色 HSL 调整；保留旧照片已保存的曝光基准。
 - 内置胶片外观，强度范围为 0-200%，支持兼容 CUBE/RLOOK 导入及原图与调整效果对比。
 - 四端统一提供 14 个大师配方与风格图标。应用配方覆盖六项调色及全部 24 项 HSL，0-200% 强度整体缩放当前配方参数、HSL 和 LUT；编辑记录与冻结批量任务保留手动修改，并按目标 RAW 解析拍摄白平衡。
@@ -37,7 +38,8 @@ RawLab 用于显影相机 RAW 文件、应用兼容的富士胶片模拟 LUT 和
 
 - [文档索引](README.md)
 - [下载最新版本](https://github.com/dancancer/RawLab/releases/latest)
-- [v0.7.0 发布说明（构建 11）](releases/v0.7.0.md)
+- [支持尼康 HE/HE* 的 v0.7.1 macOS 版本（realllllty fork）](https://github.com/realllllty/RawLab/releases/tag/v0.7.1)
+- [v0.7.1 发布说明（构建 12）](releases/v0.7.1.md)
 - [安装与分发说明](installation.md)
 - [将 RawLab 安装到自己的 iPhone](ios-installation.zh-CN.md)
 - [更新日志](../CHANGELOG.md)

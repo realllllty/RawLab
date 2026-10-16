@@ -3,6 +3,29 @@
 Release history is kept here rather than in the project READMEs. Detailed
 release notes include assets, installation requirements and validation limits.
 
+## [0.7.1] - 2026-10-16
+
+Fork release from [realllllty/RawLab](https://github.com/realllllty/RawLab),
+based on upstream 0.7.0; not an official upstream release.
+
+### Added
+
+- Nikon High Efficiency (HE) and High Efficiency* (HE*) NEF decoding in the
+  patched LibRaw shared by all clients. The decoded CFA matches Adobe DNG
+  Converter 18.2 at every sample of six Z8, Z9 and Zf test files.
+
+### Changed
+
+- Route every Nikon Z strip that starts with the JPEG XS signature to the HE
+  decoder; other NEF strips keep their decoder.
+- Build ad-hoc signed macOS 15 arm64 and x86_64 packages on GitHub-hosted
+  runners, with the Xcode 26 `lipo` argument order from upstream `707c78e`.
+
+Version `0.7.1`, build `12`. Only macOS packages are published; Windows,
+Android and iOS were not built. See [release notes](docs/releases/v0.7.1.md),
+[verification](docs/verification-nikon-he-2026-10-16.md) and
+[source instructions](docs/releases/v0.7.1-source.md).
+
 ## [0.7.0] - 2026-10-14
 
 ### Added

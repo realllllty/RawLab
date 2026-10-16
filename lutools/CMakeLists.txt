@@ -478,6 +478,19 @@ if(BUILD_TESTING AND NOT IOS AND NOT ANDROID)
     if(EXISTS "${SONY2FUJI_TEST_RAW}")
         add_test(NAME raw_reuse COMMAND raw_reuse_tests "${SONY2FUJI_TEST_RAW}")
     endif()
+    # Nikon HE/HE* decoding is part of the patched LibRaw; the unit checks need
+    # no photographs, the sample check needs the raw.pixls.us files on disk.
+    add_executable(nikon_he_tests tests/nikon_he_tests.cpp)
+    target_include_directories(nikon_he_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/nikon-he")
+    target_link_libraries(nikon_he_tests sony2fuji_core)
+    add_test(NAME nikon_he COMMAND nikon_he_tests)
+    set(SONY2FUJI_TEST_NIKON_HE_DIR "" CACHE PATH "Directory holding tests/nikon-he-raw-samples.json files (never bundled)")
+    if(SONY2FUJI_TEST_NIKON_HE_DIR)
+        find_package(Python3 REQUIRED COMPONENTS Interpreter)
+        add_test(NAME nikon_he_raw COMMAND Python3::Interpreter
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/run_nikon_he_samples.py"
+            --samples "${SONY2FUJI_TEST_NIKON_HE_DIR}" --tool "$<TARGET_FILE:nikon_he_tests>")
+    endif()
     add_executable(raw_smoke tests/raw_smoke.cpp)
     target_link_libraries(raw_smoke sony2fuji_core)
     if(SONY2FUJI_ENABLE_DNGSDK)

@@ -113,11 +113,79 @@ replace_libraw(src/tables/colordata.cpp
     "  } table[] = {"
     "  } table[] = {\n#include \"rawlab_camera_calibration.inc\"")
 
-# These new Nikon model strings must reach the existing JPEG-XS marker check,
-# not the legacy lossless decoder, even while HE/HE* decoding is unsupported.
+# Nikon models must reach the existing JPEG-XS marker check rather than the
+# legacy lossless decoder. The named list is kept for older patched sources;
+# the prefix check below now routes every Z body by its strip signature.
 replace_libraw(src/metadata/tiff.cpp
     "|| !strcmp(model, \"NIKON Z6_3\")) &&"
     "|| !strcmp(model, \"NIKON Z6_3\") || !strcmp(model, \"NIKON Z5_2\") || !strcmp(model, \"NIKON Z50_2\")) &&")
+
+# Nikon High Efficiency (HE/HE*) strips are one JPEG XS codestream. LibRaw only
+# recognises them; RawLab's decoder (third_party/nikon-he, LGPL-2.1) replaces the
+# unsupported stub. Strips without the SOC + CAP signature keep the lossless
+# decoder, and the HE decoder validates the whole header before decoding.
+replace_libraw(src/metadata/tiff.cpp
+    "else if ((!strncmp(model, \"NIKON Z 9\", 9) ||"
+    "else if ((!strncmp(model, \"NIKON Z\", 7) || !strncmp(model, \"NIKON Z 9\", 9) ||")
+configure_file("${CMAKE_CURRENT_LIST_DIR}/../third_party/nikon-he/nikon_he_decoder.h"
+    "${LIBRAW_SOURCE_DIR}/src/decoders/rawlab_nikon_he_decoder.h" COPYONLY)
+# The decoder must precede dcraw_defs.h, whose macros rename common identifiers.
+replace_libraw(src/decoders/decoders_libraw_dcrdefs.cpp
+    "#include \"../../internal/dcraw_defs.h\""
+    "#include \"rawlab_nikon_he_decoder.h\"\n#include \"../../internal/dcraw_defs.h\"")
+replace_libraw(src/decoders/decoders_libraw_dcrdefs.cpp [=[
+void LibRaw::nikon_he_load_raw()
+{
+    if(dng_version)
+    	throw LIBRAW_EXCEPTION_UNSUPPORTED_FORMAT; // Never reached
+    throw LIBRAW_EXCEPTION_UNSUPPORTED_FORMAT;
+}
+]=] [=[
+void LibRaw::nikon_he_load_raw()
+{
+  // RawLab: decode the JPEG XS strip; rows are written straight into raw_image.
+  const INT64 strip_bytes = INT64(data_size);
+  if (strip_bytes < 64 || strip_bytes > INT64(LIBRAW_MAX_NONDNG_RAW_FILE_SIZE))
+    throw LIBRAW_EXCEPTION_IO_CORRUPT;
+  std::vector<unsigned char> codestream;
+  try
+  {
+    codestream.resize(size_t(strip_bytes));
+  }
+  catch (const std::bad_alloc &)
+  {
+    throw LIBRAW_EXCEPTION_ALLOC;
+  }
+  fseek(ifp, data_offset, SEEK_SET);
+  if (fread(codestream.data(), 1, codestream.size(), ifp) != int(codestream.size()))
+    throw LIBRAW_EXCEPTION_IO_EOF;
+  rawlab_nikon_he::Decoder decoder;
+  rawlab_nikon_he::Error result = decoder.open(codestream.data(), codestream.size(),
+                                               raw_width, raw_height, raw_image, raw_width);
+  for (int slice = 0; result.status == rawlab_nikon_he::kOk && slice < decoder.slice_count();
+       ++slice)
+  {
+    checkCancel();
+    result = decoder.decode_next_slice();
+  }
+  if (result.status == rawlab_nikon_he::kOk)
+    result = decoder.finish();
+  if (result.status == rawlab_nikon_he::kNoMemory)
+    throw LIBRAW_EXCEPTION_ALLOC;
+  if (result.status == rawlab_nikon_he::kUnsupported)
+    throw LIBRAW_EXCEPTION_UNSUPPORTED_FORMAT;
+  if (result.status != rawlab_nikon_he::kOk)
+    throw LIBRAW_EXCEPTION_IO_CORRUPT;
+}
+]=])
+replace_libraw(src/utils/decoder_info.cpp
+    "    d_info->decoder_name = \"nikon_he_load_raw()\";\n    d_info->decoder_flags = LIBRAW_DECODER_UNSUPPORTED_FORMAT;"
+    "    d_info->decoder_name = \"nikon_he_load_raw()\";\n    d_info->decoder_flags = 0;")
+foreach(nikon_he_model "Z 6 III" "Z 8" "Z 9" "Z f")
+    replace_libraw(src/tables/cameralist.cpp
+        "\"Nikon ${nikon_he_model} (HE/HE* formats are not supported yet)\","
+        "\"Nikon ${nikon_he_model}\",")
+endforeach()
 
 # R6 III ColorData subversion 66 uses the existing v12 offsets, not v11.
 # Layout and Adobe-derived matrix: https://github.com/LibRaw/LibRaw/issues/821
