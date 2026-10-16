@@ -51,8 +51,17 @@ unsupported rather than decoded approximately.
 
 Verified on the CC0 [raw.pixls.us](https://raw.pixls.us/) samples listed in
 `lutools/tests/nikon-he-raw-samples.json` (Z8 and Z9 HE and HE*, Zf HE and
-HE*): every sub-packet length matches, decoding ends exactly at EOC, the
-streaming implementation matches a whole-frame ISO reference bit for bit, and
-same-scene lossless files show a flat brightness ratio in all four CFA
-channels. No other Nikon model or crop mode has been decoded locally, and the
-output has not been compared with Adobe DNG Converter in this repository.
+HE*):
+
+- The decoded CFA equals the uncompressed CFA written by Adobe DNG Converter
+  18.2 (2482) at every sample of all six files (232 million samples, zero
+  differences). The same comparison of the three lossless files against
+  LibRaw's lossless decoder is also exact, so the method adds no offset or
+  scaling. Run: <https://github.com/realllllty/RawLab/actions/runs/38902836853>.
+- Every sub-packet length matches and decoding ends exactly at EOC; the
+  streaming implementation matches a whole-frame ISO reference bit for bit.
+
+The Z6III header in dnglab's tests is identical to these files, and RdWing's
+Adobe comparison included Z6III and Z5II files, but no Z6III, Z5II, Z50II or
+ZR file and no crop mode has been decoded here. A stream outside the profile
+is rejected rather than decoded.
