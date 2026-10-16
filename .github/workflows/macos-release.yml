@@ -14,9 +14,10 @@ on:
 permissions:
   contents: read
 
+# One run per commit; a newer push does not cancel a package build in progress.
 concurrency:
-  group: macos-release-${{ github.ref }}
-  cancel-in-progress: true
+  group: macos-release-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   macos:
@@ -125,9 +126,37 @@ jobs:
                   'executables': int(binaries),
               },
           }
+          brew = subprocess.run(['brew', 'list', '--versions', 'glib', 'gettext', 'pcre2'],
+                                capture_output=True, text=True, check=True).stdout.split('\n')
+          record['homebrew_runtime'] = dict(line.split(' ', 1) for line in brew if line)
           pathlib.Path('dist', f"provenance-{os.environ['RAWLAB_ARCH']}.json").write_text(json.dumps(record, indent=2) + '\n')
           print(json.dumps(record, indent=2))
           PY
+      - name: Dependency source archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Corresponding sources of every bundled third-party library: the
+          # pinned archives this build downloaded and the Homebrew GLib,
+          # gettext and PCRE2 sources behind the embedded runtime dylibs.
+          version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")"
+          name="RawLab-$version-dependency-sources"
+          stage="$RUNNER_TEMP/$name"
+          mkdir -p "$stage/homebrew-$RAWLAB_ARCH"
+          for formula in glib gettext pcre2; do
+            brew fetch --build-from-source "$formula"
+            cp "$(brew --cache --build-from-source "$formula")" "$stage/homebrew-$RAWLAB_ARCH/"
+          done
+          brew info --json=v2 glib gettext pcre2 > "$stage/homebrew-$RAWLAB_ARCH/formulae.json"
+          if [ "$RAWLAB_ARCH" = arm64 ]; then
+            mkdir -p "$stage/pinned"
+            find build/macos15-deps/sources build/lensfun/sources -maxdepth 1 -type f \
+              \( -name '*.tar.gz' -o -name '*.tar.xz' -o -name '*.zip' \) -exec cp {} "$stage/pinned/" \;
+            find build/macos15-deps -name 'dng_sdk_*.zip' -exec cp {} "$stage/pinned/" \;
+          fi
+          (cd "$stage" && find . -type f ! -name SHA256SUMS | LC_ALL=C sort | xargs shasum -a 256 > SHA256SUMS)
+          cat "$stage/SHA256SUMS"
+          tar -czf "dist/$name-$RAWLAB_ARCH.tar.gz" -C "$RUNNER_TEMP" "$name"
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: RawLab-Mac-${{ matrix.arch }}
@@ -191,4 +220,56 @@ jobs:
         with:
           name: LibRaw-patched-source
           path: dist/LibRaw-0.22.2-patched-source.tar.gz
+          retention-days: 30
+
+  release-assets:
+    name: Release assets
+    needs: [macos, libraw-source]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          path: artifacts
+      - name: Assemble checksums, provenance and one dependency source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release stage
+          cp artifacts/RawLab-Mac-*/RawLab-Mac-*.zip release/
+          cp artifacts/LibRaw-patched-source/LibRaw-0.22.2-patched-source.tar.gz release/
+          for archive in artifacts/RawLab-Mac-*/RawLab-*-dependency-sources-*.tar.gz; do
+            tar -xzf "$archive" -C stage
+          done
+          name="$(ls stage)"
+          rm -f "stage/$name/SHA256SUMS"
+          (cd "stage/$name" && find . -type f | LC_ALL=C sort | xargs sha256sum > SHA256SUMS)
+          tar --sort=name --owner=0 --group=0 --numeric-owner --mtime='2026-10-16 00:00Z' \
+            -czf "release/$name.tar.gz" -C stage "$name"
+          python3 - <<'PY'
+          import datetime, hashlib, json, os, pathlib
+          release = pathlib.Path('release')
+          def digest(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
+          packages = [json.loads(p.read_text()) for p in sorted(pathlib.Path('artifacts').glob('RawLab-Mac-*/provenance-*.json'))]
+          others = {p.name: {'bytes': p.stat().st_size, 'sha256': digest(p)}
+                    for p in sorted(release.iterdir()) if not p.name.startswith('RawLab-Mac-')}
+          record = {
+              'version': packages[0]['version'], 'build': packages[0]['build'],
+              'repository': os.environ['GITHUB_REPOSITORY'], 'ref': os.environ['GITHUB_REF'],
+              'source_commit': os.environ['GITHUB_SHA'],
+              'upstream_base': 'dancancer/RawLab v0.7.0 (c7f12db6de23f53f94f04144bd40218d9c274932)',
+              'run': f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+              'created_utc': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+              'packages': packages, 'source_archives': others,
+              'nikon_he_reference': 'Adobe DNG Converter 18.2 (2482) CFA identical on six raw.pixls.us HE/HE* files: '
+                                    'https://github.com/realllllty/RawLab/actions/runs/38902836853',
+          }
+          (release / 'BUILD-PROVENANCE.json').write_text(json.dumps(record, indent=2) + '\n')
+          PY
+          (cd release && sha256sum -- * > SHA256SUMS.txt && cat SHA256SUMS.txt)
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: release-assets
+          path: release/*
           retention-days: 30
