@@ -18,6 +18,8 @@ film looks do not promise an exact match to in-camera JPEGs.
 
 - RAW development with exposure, camera-space white balance, tone, color and
   sharpening controls.
+- Nikon High Efficiency (HE) and HE* NEF decoding, bit-exact with Adobe DNG
+  Converter on the tested Z8, Z9 and Zf files.
 - New RAW edits start with embedded-preview exposure matching. One-shot Auto
   exposure and an eight-channel HSL mixer are shared across all four clients;
   existing saved exposure baselines are preserved.
@@ -61,7 +63,8 @@ film looks do not promise an exact match to in-camera JPEGs.
 
 - [Documentation index](docs/README.md)
 - [Download the latest release](https://github.com/dancancer/RawLab/releases/latest)
-- [v0.7.0 release notes (build 11)](docs/releases/v0.7.0.md)
+- [v0.7.1 macOS packages with Nikon HE/HE* support (realllllty fork)](https://github.com/realllllty/RawLab/releases/tag/v0.7.1)
+- [v0.7.1 release notes (build 12)](docs/releases/v0.7.1.md)
 - [Installation and distribution notes](docs/installation.md)
 - [iPhone installation guide](docs/ios-installation.md)
 - [Changelog](CHANGELOG.md)

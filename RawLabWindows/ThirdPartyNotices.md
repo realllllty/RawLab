@@ -21,6 +21,10 @@
   The exact source archive and SHA-256 are pinned in `native/CMakeLists.txt`.
   Local crop, X-Trans concurrency and Nikon recognition changes are applied by
   `lutools/cmake/patch-libraw.cmake` in the RawLab source repository.
+  The same patch compiles in the Nikon HE/HE* decoder from
+  `lutools/third_party/nikon-he` (LGPL-2.1-only), ported from dnglab
+  (https://github.com/dnglab/dnglab/pull/835) with the transfer curve documented
+  in https://github.com/LibRaw/LibRaw/pull/826. No Nikon SDK code is included.
   R6 III layout/matrix evidence is from ErikCJohansson's contribution at
   https://github.com/LibRaw/LibRaw/issues/821; the parser reuses LibRaw v12 offsets.
   This local correction does not imply upstream R6 III support.

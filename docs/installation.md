@@ -7,15 +7,18 @@ Get current packages and checksums from the [latest release](https://github.com/
 | Platform | Package | Requirements |
 | --- | --- | --- |
 | Windows | [v0.7.0 x64 ZIP](https://github.com/dancancer/RawLab/releases/download/v0.7.0/RawLab-Windows-0.7.0-win-x64.zip) | Windows10/11 x64 |
-| macOS Apple Silicon | [v0.7.0 arm64 ZIP](https://github.com/dancancer/RawLab/releases/download/v0.7.0/RawLab-Mac-0.7.0-macOS15-arm64.zip) | macOS15+ |
+| macOS Apple Silicon | [v0.7.1 arm64 ZIP (fork, Nikon HE/HE*)](https://github.com/realllllty/RawLab/releases/download/v0.7.1/RawLab-Mac-0.7.1-macOS15-arm64.zip) | macOS15+ |
 | Android | [v0.7.0 signed APK](https://github.com/dancancer/RawLab/releases/download/v0.7.0/RawLab-Android-0.7.0.apk) | Android8+, ARM64 or x86_64 |
-| macOS Intel | [Previous v0.6.0 x86_64 ZIP](https://github.com/dancancer/RawLab/releases/download/v0.6.0/RawLab-Mac-0.6.0-macOS15-x86_64.zip) | No v0.7.0 Intel package; macOS15+ |
+| macOS Intel | [v0.7.1 x86_64 ZIP (fork, Nikon HE/HE*)](https://github.com/realllllty/RawLab/releases/download/v0.7.1/RawLab-Mac-0.7.1-macOS15-x86_64.zip) | macOS15+ |
 | iOS | [Build and sign from source](releases/v0.7.0-source.md#ios) | iOS18+; valid signing and provisioning required |
 
-[v0.7.0 SHA-256 checksums](https://github.com/dancancer/RawLab/releases/download/v0.7.0/SHA256SUMS.txt)
-cover this release's assets. The previous Intel package retains its
-[v0.6.0 checksum](https://github.com/dancancer/RawLab/releases/download/v0.6.0/SHA256SUMS.txt).
-No directly installable iOS package is published for v0.7.0.
+The macOS v0.7.1 packages are a release of the
+[realllllty/RawLab](https://github.com/realllllty/RawLab) fork: upstream v0.7.0
+plus Nikon High Efficiency (HE/HE*) NEF decoding, with
+[v0.7.1 SHA-256 checksums](https://github.com/realllllty/RawLab/releases/download/v0.7.1/SHA256SUMS.txt).
+The other packages remain upstream v0.7.0, covered by its
+[SHA-256 checksums](https://github.com/dancancer/RawLab/releases/download/v0.7.0/SHA256SUMS.txt).
+No directly installable iOS package is published for v0.7.0 or v0.7.1.
 
 ## Windows
 
@@ -28,9 +31,12 @@ builds and [performance measurements](../RawLabWindows/performance.md).
 
 Choose the architecture matching your Mac and move `RawLab Mac.app` to
 Applications. Apps are ad-hoc signed, not Developer ID signed or notarized;
-macOS may block opening them. The executable and dependencies target macOS 15,
-but physical macOS 15 testing is still pending. Intel validation uses Rosetta,
-not native Intel hardware. See the [macOS documentation](../RawLabMac/README.md).
+macOS may block opening them. Control-click the app and choose Open, or run
+`xattr -dr com.apple.quarantine "/Applications/RawLab Mac.app"`. The executable
+and dependencies target macOS 15, but physical macOS 15 testing is still
+pending. The v0.7.1 packages were built and smoke-tested on GitHub's macOS 15
+arm64 and Intel runners without manual GUI testing. See the
+[macOS documentation](../RawLabMac/README.md).
 
 ## Android
 
@@ -59,6 +65,7 @@ memory and thermal validation remain outstanding. See the
 The release provides corresponding source, pinned dependency sources and build
 instructions alongside the binaries. Original project code is distributed
 under [GPLv3 only](../LICENSE); dependencies and resources retain their own
-licenses. See [licensing](licensing.md) and the [release notes](releases/v0.7.0.md).
+licenses. See [licensing](licensing.md) and the release notes for
+[v0.7.1](releases/v0.7.1.md) and [v0.7.0](releases/v0.7.0.md).
 
 RAW files and private signing material are never included in source packages.

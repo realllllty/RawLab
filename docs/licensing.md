@@ -33,7 +33,9 @@ Keep their license texts and attribution with redistributed copies:
 
 LibRaw is used under its LGPL option, with its CDDL alternative and copyright
 notice also retained. Its corresponding patched source is supplied with the
-release. OpenCV, wavelib, stb, Adobe-derived code, calibration data, ExifTool,
+release. The Nikon HE/HE* decoder compiled into LibRaw,
+`lutools/third_party/nikon-he/nikon_he_decoder.h`, is LGPL-2.1-only because it
+ports dnglab code; provenance is in that directory's README. OpenCV, wavelib, stb, Adobe-derived code, calibration data, ExifTool,
 runtime libraries and LUTs retain their respective notices.
 
 Profile-based lens correction uses unmodified Lensfun 0.3.4 (LGPL-3.0).

@@ -33,6 +33,10 @@ The left pane is the neutral render and the right pane is Velvia. Film selection
 镜头工具提供独立的畸变矫正、横向色差校正、自动/手动匹配和自动裁边，默认关闭校正。配置随逐照片编辑保存，批量自动模式逐张匹配；中性对照不校正。离线数据库、依赖和功能边界见[跨平台说明](../docs/lens-correction-platforms.md)。紫绿去边暂未实现。
 
 
+v0.7.1 构建12（fork [realllllty/RawLab](https://github.com/realllllty/RawLab) 发布）新增尼康 High Efficiency（HE/HE*）NEF 解码，在已测试的 Z8、Z9、Zf 文件上与 Adobe DNG Converter 逐像素一致。预编译版本：[GitHub Release v0.7.1](https://github.com/realllllty/RawLab/releases/tag/v0.7.1)，提供 Apple Silicon arm64 与 Intel x86_64 两个包，最低 macOS15.0，ad-hoc 签名、未公证。详见[发布说明](../docs/releases/v0.7.1.md)和[验证记录](../docs/verification-nikon-he-2026-10-16.md)。
+
+v0.7.1 build 12 (a release of the realllllty fork) decodes Nikon High Efficiency (HE/HE*) NEF, bit-exact with Adobe DNG Converter on the tested Z8, Z9 and Zf files. Prebuilt arm64 and x86_64 packages for macOS15 or later, ad-hoc signed without notarization: [GitHub Release v0.7.1](https://github.com/realllllty/RawLab/releases/tag/v0.7.1).
+
 v0.7.0 构建11新增 JPEG XL DNG 解码、渲染型 DNG 导出、镜头配置校正和六语界面，并按当前视口生成预览、复用降噪分析。Sony CPU 整图降噪内存修复已纳入共享核心。详见[发布说明](../docs/releases/v0.7.0.md)和[发布验收](../docs/verification-v0.7.0-release.md)。
 
 预编译版本：[GitHub Release v0.7.0](https://github.com/dancancer/RawLab/releases/tag/v0.7.0)。下载 [Apple Silicon arm64](https://github.com/dancancer/RawLab/releases/download/v0.7.0/RawLab-Mac-0.7.0-macOS15-arm64.zip)，解压后将 `RawLab Mac.app` 放入 Applications。最低 macOS15.0；采用 ad-hoc 签名，没有 Developer ID 签名或 Apple 公证。Intel 可继续使用[上一版 v0.6.0 x86_64](https://github.com/dancancer/RawLab/releases/download/v0.6.0/RawLab-Mac-0.6.0-macOS15-x86_64.zip)。物理 macOS15 与新版 Intel 包未验证。
@@ -74,9 +78,9 @@ The flat app icon uses overlapping yellow/cyan frames on charcoal to suggest the
 
 Rebuild third-party libraries from pinned upstream source archives and produce two separate apps without overwriting the default build. Requires CMake, pkg-config, make, Apple Command Line Tools, and curl. NASM optionally enables Intel libjpeg SIMD acceleration; decoding still works without it. OpenMP, JPEG, DNG deflate and LCMS are retained. LibRaw 0.22 no longer enables the legacy RedCine/JasPer path; prior JPEG2000 coverage is not promised.
 
-新版相机校准、R6 III 元数据、X2D II 裁切及 X-Trans 并发修复由 `lutools/cmake/patch-libraw.cmake` 应用到源码依赖。未打补丁的 Homebrew/系统 LibRaw 0.22.2 不包含这些修复；请使用下列源码构建和对应 `PKG_CONFIG_PATH`。逐样片结果及 HE* 限制见[兼容性报告](../docs/archive/verification/verification-raw-compatibility-2026-10-09.md)。
+新版相机校准、R6 III 元数据、X2D II 裁切、X-Trans 并发修复及尼康 HE/HE* 解码由 `lutools/cmake/patch-libraw.cmake` 应用到源码依赖。未打补丁的 Homebrew/系统 LibRaw 0.22.2 不包含这些修复；请使用下列源码构建和对应 `PKG_CONFIG_PATH`。逐样片结果见[兼容性报告](../docs/archive/verification/verification-raw-compatibility-2026-10-09.md)，HE/HE* 解码见[验证记录](../docs/verification-nikon-he-2026-10-16.md)。
 
-Camera calibration, R6 III metadata, X2D II crop and X-Trans concurrency fixes are applied to source dependencies by `lutools/cmake/patch-libraw.cmake`. Unpatched Homebrew/system LibRaw 0.22.2 does not include them; use the source build and matching `PKG_CONFIG_PATH` below. See the [compatibility report](../docs/archive/verification/verification-raw-compatibility-2026-10-09.md) for per-sample results and HE* limitations.
+Camera calibration, R6 III metadata, X2D II crop, X-Trans concurrency fixes and Nikon HE/HE* decoding are applied to source dependencies by `lutools/cmake/patch-libraw.cmake`. Unpatched Homebrew/system LibRaw 0.22.2 does not include them; use the source build and matching `PKG_CONFIG_PATH` below. See the [compatibility report](../docs/archive/verification/verification-raw-compatibility-2026-10-09.md) for per-sample results and the [Nikon HE verification](../docs/verification-nikon-he-2026-10-16.md) for HE/HE* decoding.
 
 ```bash
 for arch in arm64 x86_64; do
